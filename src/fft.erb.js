@@ -355,10 +355,10 @@
 		real: real,
 		inverse: {
 			complex: function(n) {
-				return FFT.complex(n, true)
+				return new FFT.complex(n, true)
 			},
 			real: function(n) {
-				return FFT.real(n, true)
+				return new FFT.real(n, true)
 			}
 		}
 	}

@@ -32,7 +32,9 @@ function half(n) {
 }
 
 function testSimpleRealFFT(debug) {
-	var fft = new FFT.real(4, false)
+	var N = 4;
+	var fft = new FFT.real(N)
+	var ifft = new FFT.inverse.real(N)
 	var io = [
 		// time       //freq (dc, nyquist, bin1_r/bin3_r, bin1_i/-bin3_i)
 		[0, 0, 0, 0], [0, 0, 0, 0], // zeros
@@ -46,9 +48,9 @@ function testSimpleRealFFT(debug) {
 	for (var i = 0; i < io.length/2; i++) {
 		var input = new Float64Array(io[2*i])
 		var o = new Float64Array(io[2*i+1])
-		var output = new Float64Array(4)
-		fft.simple(output, input, 'real')
-		for (var j = 0; j < 4; j++) {
+		var output = new Float64Array(N)
+		fft.simple(output, input)
+		for (var j = 0; j < N; j++) {
 			if (isNaN(output[j]) || Math.abs(o[j] - output[j]/2) > 1e-12) {
 				console.log("Failed: ", toArray(input))
 				console.log("Expected: ", toArray(o))
@@ -56,11 +58,22 @@ function testSimpleRealFFT(debug) {
 				break;
 			}
 		}
+		ifft.simple(output, o)
+		for (var k = 0; k < N; k++) {
+			if (isNaN(output[k]) || Math.abs(input[k] - output[k]/N) > 1e-12) {
+				console.log("Failed: ", toArray(o))
+				console.log("Expected: ", toArray(input))
+				console.log("Got: ", toArray(output))
+				break;
+			}
+		}
 	}
 }
 function testSimpleRealFFT2(debug) {
+	var N = 8
 	var s = Math.SQRT1_2
-	var fft = new FFT.real(8, false)
+	var fft = new FFT.real(N, false)
+	var ifft = new FFT.inverse.real(N)
 	var io = [
 		// time       //freq (dc, nyquist, bin1_r/bin3_r, bin1_i/-bin3_i)
 		[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], // zeros
@@ -74,13 +87,22 @@ function testSimpleRealFFT2(debug) {
 	for (var i = 0; i < io.length/2; i++) {
 		var input = new Float64Array(io[2*i])
 		var o = new Float64Array(io[2*i+1])
-		var output = new Float64Array(8)
-		fft.simple(output, input, 'real')
-		for (var j = 0; j < 8; j++) {
+		var output = new Float64Array(N)
+		fft.simple(output, input)
+		for (var j = 0; j < N; j++) {
 			if (isNaN(output[j]) || Math.abs(o[j] - output[j]/2) > 1e-12) {
 				console.log("Failed: ", toArray(input))
 				console.log("Expected: ", toArray(o))
 				console.log("Got: ", toArray(output).map(half))
+				break;
+			}
+		}
+		ifft.simple(output, o)
+		for (var k = 0; k < N; k++) {
+			if (isNaN(output[k]) || Math.abs(input[k] - output[k]/N) > 1e-12) {
+				console.log("Failed: ", toArray(o))
+				console.log("Expected: ", toArray(input))
+				console.log("Got: ", toArray(output))
 				break;
 			}
 		}
