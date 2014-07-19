@@ -308,6 +308,10 @@
 	}
 
 	var real = function (n, inverse) {
+		if (n % 2 !== 0) {
+			throw new RangeError("n should be even, was `" + n + "'")
+		}
+
 		this.state = (new complex(n/2, inverse)).state
 
 		this.state.twiddleReal = new Float64Array(n)
