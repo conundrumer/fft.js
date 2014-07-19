@@ -51,7 +51,7 @@ function testSimpleRealFFT(debug) {
 		var output = new Float64Array(N)
 		fft.simple(output, input)
 		for (var j = 0; j < N; j++) {
-			if (isNaN(output[j]) || Math.abs(o[j] - output[j]/2) > 1e-12) {
+			if (isNaN(output[j]) || Math.abs(o[j] - output[j]) > 1e-12) {
 				console.log("Failed: ", toArray(input))
 				console.log("Expected: ", toArray(o))
 				console.log("Got: ", toArray(output).map(half))
@@ -90,7 +90,7 @@ function testSimpleRealFFT2(debug) {
 		var output = new Float64Array(N)
 		fft.simple(output, input)
 		for (var j = 0; j < N; j++) {
-			if (isNaN(output[j]) || Math.abs(o[j] - output[j]/2) > 1e-12) {
+			if (isNaN(output[j]) || Math.abs(o[j] - output[j]) > 1e-12) {
 				console.log("Failed: ", toArray(input))
 				console.log("Expected: ", toArray(o))
 				console.log("Got: ", toArray(output).map(half))

@@ -279,7 +279,7 @@
 		var n, f=state.n
 
 		var flip = state.inverse ? -1 : 1
-		var normalize = state.inverse ? 1 : 2
+		var normalize = state.inverse ? 1 : 0.5
 
 		for(n=state.n>>1; n>0; n--) {
 			<%= load('d0', 'fdata', 'offset', 'n', 'stride') %>
@@ -292,18 +292,18 @@
 
 			var t_i = (x1_r * t0_i + x0_i * t0_r) * flip
 			var t_r = (x0_i * t0_i - x1_r * t0_r) * flip
-			var r0_r = x0_r + t_i
-			var r0_i = x1_i + t_r
+			var r0_r = (x0_r + t_i) * normalize
+			var r0_i = (t_r + x1_i) * normalize
 
-			var r1_r = x0_r - t_i
-			var r1_i =  t_r - x1_i
+			var r1_r = (x0_r - t_i) * normalize
+			var r1_i =  (t_r - x1_i) * normalize
 
 			<%= store('r0', 'fdata', 'offset', 'n', 'stride') %>
 			<%= store('r1', 'fdata', 'offset', 'f-n', 'stride') %>
 		}
 		<%= load('y0', 'fdata', 'offset', '0') %>
-		var y1_r = (y0_r + y0_i) * normalize
-		var y1_i = (y0_r - y0_i) * normalize
+		var y1_r = (y0_r + y0_i)
+		var y1_i = (y0_r - y0_i)
 		<%= store('y1', 'fdata', 'offset', '0') %>
 	}
 
