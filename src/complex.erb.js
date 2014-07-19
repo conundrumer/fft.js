@@ -188,7 +188,6 @@ void function (namespace) {
 
 			factors: [],
 			twiddle: new Float64Array(2 * n),
-			twiddleReal: new Float64Array(2 * 2*n),
 			scratch: new Float64Array(2 * n)
 		}
 
@@ -203,19 +202,6 @@ void function (namespace) {
 
 			<%= real('t', 'i') %> = Math.cos(phase)
 			<%= imag('t', 'i') %> = Math.sin(phase)
-		}
-
-		var tReal = state.twiddleReal, thetaReal = 2 * Math.PI / (2*n)
-
-		for (var i = 0; i < n; i++) {
-			if (inverse) {
-				var phase =  thetaReal * i
-			} else {
-				var phase = -thetaReal * i
-			}
-
-			<%= real('tReal', 'i') %> = Math.cos(phase)
-			<%= imag('tReal', 'i') %> = Math.sin(phase)
 		}
 
 		var p = 4, v = Math.floor(Math.sqrt(n))
@@ -259,7 +245,7 @@ void function (namespace) {
 			throw new RangeError("inputStride is outside range, should be positive integer, was `" + inputStride + "'")
 		}
 
-		if (type == 'realslow') {
+		if (type == 'real' || type == 'realslow') {
 			for (var i = 0; i < this.state.n; i++) {
 				var x0_r = input[inputOffset + inputStride * i]
 				var x0_i = 0.0
@@ -268,20 +254,7 @@ void function (namespace) {
 			}
 
 			work(output, outputOffset, outputStride, this.state.scratch, 0, 1, 1, this.state.factors.slice(), this.state)
-		} else if (type == 'complex') {
-			if (input == output) {
-				work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
-
-				for (var i = 0; i < this.state.n; i++) {
-					<%= load('x0', 'this.state.scratch', 'i') %>
-
-					<%= store('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
-				}
-			} else {
-				work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
-			}
 		} else {
-			if (this.state.inverse) realbifftstage(input, outputOffset, outputStride, this.state) // what?
 			if (input == output) {
 				work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 
@@ -293,7 +266,6 @@ void function (namespace) {
 			} else {
 				work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 			}
-			if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state)
 		}
 	}
 
@@ -330,7 +302,46 @@ void function (namespace) {
 		<%= store('y1', 'fdata', 'offset', '0') %>
 	}
 
+	var real = function (n, inverse) {
+		this.state = (new complex(n/2, inverse)).state
+
+		this.state.twiddleReal = new Float64Array(2 * n)
+
+		var t = this.state.twiddleReal, theta = 2 * Math.PI / n
+
+		for (var i = 0; i < n; i++) {
+			if (inverse) {
+				var phase =  theta * i
+			} else {
+				var phase = -theta * i
+			}
+
+			<%= real('t', 'i') %> = Math.cos(phase)
+			<%= imag('t', 'i') %> = Math.sin(phase)
+		}
+	}
+
+	real.prototype.simple = function (output, input) {
+		this.process(output, 0, 1, input, 0, 1)
+	}
+
+	real.prototype.process = function(output, outputOffset, outputStride, input, inputOffset, inputStride) {
+		if (this.state.inverse) realbifftstage(input, outputOffset, outputStride, this.state) // what?
+		if (input == output) {
+			work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
+
+			for (var i = 0; i < this.state.n; i++) {
+				<%= load('x0', 'this.state.scratch', 'i') %>
+
+				<%= store('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			}
+		} else {
+			work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
+		}
+		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state)
+	}
 	namespace.complex = complex
+	namespace.real = real
 }(FFT)
 
 if (module && module.exports) {

@@ -32,7 +32,7 @@ function half(n) {
 }
 
 function testSimpleRealFFT(debug) {
-	var fft = new FFT.complex(4/2, false)
+	var fft = new FFT.real(4, false)
 	var io = [
 		// time       //freq (dc, nyquist, bin1_r/bin3_r, bin1_i/-bin3_i)
 		[0, 0, 0, 0], [0, 0, 0, 0], // zeros
@@ -60,7 +60,7 @@ function testSimpleRealFFT(debug) {
 }
 function testSimpleRealFFT2(debug) {
 	var s = Math.SQRT1_2
-	var fft = new FFT.complex(8/2, false)
+	var fft = new FFT.real(8, false)
 	var io = [
 		// time       //freq (dc, nyquist, bin1_r/bin3_r, bin1_i/-bin3_i)
 		[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], // zeros
