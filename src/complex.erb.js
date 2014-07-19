@@ -1,10 +1,15 @@
 <%= $:.unshift('.'); require "#{File.dirname(__FILE__)}/../src/complex.rb"; File.read "#{File.dirname(__FILE__)}/../LICENSE" %>
 
-if (!FFT) {
-	var FFT = {}
-}
-
-void function (namespace) {
+(function export_FFT(root, factory) {
+	if (typeof define === "function" && define.amd) {
+		define([], factory)
+	} else if (typeof exports === 'object') {
+		module.exports = factory()
+	} else {
+		console.log("else")
+		root.FFT = factory()
+	}
+}(this, function module_FFT() {
 	"use strict"
 
 	function butterfly2(output, outputOffset, outputStride, fStride, state, m) {
@@ -340,10 +345,10 @@ void function (namespace) {
 		}
 		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state)
 	}
-	namespace.complex = complex
-	namespace.real = real
-}(FFT)
 
-if (module && module.exports) {
-	module.exports = FFT
-}
+	var FFT = {}
+	FFT.complex = complex
+	FFT.real = real
+
+	return FFT
+}))
