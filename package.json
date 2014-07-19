@@ -16,5 +16,8 @@
 	"bugs":		{
 		"url":		"http://github.com/JensNockert/fft.js/issues"
 	},
-	"main":		"./lib/node.js"
+	"main":		"./lib/node.js",
+	"scripts": {
+		"test": "node test.js"
+	}
 }
