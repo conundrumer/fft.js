@@ -310,7 +310,7 @@
 	var real = function (n, inverse) {
 		this.state = (new complex(n/2, inverse)).state
 
-		this.state.twiddleReal = new Float64Array(2 * n)
+		this.state.twiddleReal = new Float64Array(n)
 
 		var t = this.state.twiddleReal, theta = 2 * Math.PI / n
 
@@ -346,9 +346,18 @@
 		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state)
 	}
 
-	var FFT = {}
-	FFT.complex = complex
-	FFT.real = real
+	var FFT = {
+		complex: complex,
+		real: real,
+		inverse: {
+			complex: function(n) {
+				return FFT.complex(n, true)
+			},
+			real: function(n) {
+				return FFT.real(n, true)
+			}
+		}
+	}
 
 	return FFT
 }))
