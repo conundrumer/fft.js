@@ -1,4 +1,4 @@
-var FFT = require("./lib/complex.js")
+var FFT = require("./lib/fft.js")
 
 // set run to 1 for real numbers, 2 for complex numbers
 function kahanDiff(x, xOffset, xStride, y, yOffset, yStride, n, run) {

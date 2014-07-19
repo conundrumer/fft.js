@@ -1,9 +1,12 @@
-TARGETS := lib/complex.js lib/node.erb.js lib/node.js
+TARGETS := lib/complex.js lib/node.erb.js lib/node.js lib/fft.js
 
 all: $(TARGETS)
 node: lib/node.js
 
 lib/complex.js: src/complex.erb.js
+	erb $^ > $@
+
+lib/fft.js: src/fft.erb.js
 	erb $^ > $@
 
 lib/node.erb.js: src/node.erb.js
