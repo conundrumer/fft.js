@@ -127,8 +127,8 @@ function generateTestSignals(N, unpacked) {
 	})
 }
 
-var epsilon = 1e-10
 function testRealFFT(N, unpacked, debug) {
+	var epsilon = 1e-10
 	if (debug) {
 		console.log("Testing N=",N)
 	}
@@ -200,6 +200,21 @@ function Signal(name, fn, N, unpacked) {
 	}
 }
 
+function testRealFFTPrecision(N, epsilon) {
+	var fft = new FFT.real(N)
+	var ifft = new FFT.inverse.real(N)
+	var input = new Float64Array(N)
+	var output = new Float64Array(N)
+	var inverted = new Float64Array(N)
+
+	fill(input, toArray(input).map(function(){return Math.random()}))
+	fft.simple(output, input)
+	ifft.simple(inverted, output)
+	var diff = kahanDiff(input, 0, 1, inverted, 0, 1, N, 1)
+	if ( isNaN(diff) || diff > epsilon) {
+		console.log("Precision Failed:", N, ", Error: ", diff)
+	}
+}
 console.log("testing n = 4")
 testSimpleRealFFT();
 console.log("testing n = 8")
@@ -211,5 +226,9 @@ for (var i = 4; i <= 64; i += 2) {
 console.log("testing n = 4 to 64, unpacked")
 for (var i = 4; i <= 64; i += 2) {
 	testRealFFT(i, true)
+}
+console.log("testing precision, n = 2^2 to 2^20, powers")
+for (var i = 1; i < 20; i++ ) {
+	testRealFFTPrecision(2<<i, 1e-10)
 }
 console.log("done")
