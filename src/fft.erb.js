@@ -275,7 +275,7 @@
 	}
 
 	// http://www.katjaas.nl/realFFT/realFFT2.html
-	function realbifftstage(fdata, offset, stride, state, unpacked) {
+	function realbifftstage(fdata, offset, stride, state, packed) {
 		var n, f=state.n
 
 		var flip = state.inverse ? -1 : 1
@@ -302,7 +302,11 @@
 			<%= store('r1', 'fdata', 'offset', 'f-n', 'stride') %>
 		}
 		<%= load('y0', 'fdata', 'offset', '0') %>
-		if (unpacked) {
+		if (packed) {
+			var y1_r = y0_r + y0_i
+			var y1_i = y0_r - y0_i
+			<%= store('y1', 'fdata', 'offset', '0') %>
+		} else {
 			if (state.inverse) {
 				<%= load('y1', 'fdata', 'offset', 'f', 'stride') %>
 				var y2_r = y0_r + y1_r
@@ -316,10 +320,6 @@
 				<%= store('y0', 'fdata', 'offset', '0') %>
 				<%= store('y1', 'fdata', 'offset', 'f', 'stride') %>
 			}
-		} else {
-			var y1_r = y0_r + y0_i
-			var y1_i = y0_r - y0_i
-			<%= store('y1', 'fdata', 'offset', '0') %>
 		}
 	}
 
@@ -349,11 +349,11 @@
 	real.prototype.simple = function (output, input) {
 		this.process(output, 0, 1, input, 0, 1)
 	}
-	real.prototype.unpacked = function(output, input) {
+	real.prototype.packed = function(output, input) {
 		this.process(output, 0, 1, input, 0, 1, true)
 	}
-	real.prototype.process = function(output, outputOffset, outputStride, input, inputOffset, inputStride, unpacked) {
-		if (this.state.inverse) realbifftstage(input, outputOffset, outputStride, this.state, unpacked) // what?
+	real.prototype.process = function(output, outputOffset, outputStride, input, inputOffset, inputStride, packed) {
+		if (this.state.inverse) realbifftstage(input, outputOffset, outputStride, this.state, packed)
 		if (input == output) {
 			work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 
@@ -365,7 +365,7 @@
 		} else {
 			work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 		}
-		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state, unpacked)
+		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state, packed)
 	}
 
 	var FFT = {

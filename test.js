@@ -46,7 +46,7 @@ function testSimpleRealFFT(debug) {
 		var input = new Float64Array(io[2*i])
 		var o = new Float64Array(io[2*i+1])
 		var output = new Float64Array(N)
-		fft.simple(output, input)
+		fft.packed(output, input)
 		for (var j = 0; j < N; j++) {
 			if (isNaN(output[j]) || Math.abs(o[j] - output[j]) > 1e-12) {
 				console.log("Failed: ", toArray(input))
@@ -55,7 +55,7 @@ function testSimpleRealFFT(debug) {
 				break;
 			}
 		}
-		ifft.simple(output, o)
+		ifft.packed(output, o)
 		for (var k = 0; k < N; k++) {
 			if (isNaN(output[k]) || Math.abs(input[k] - output[k]/N) > 1e-12) {
 				console.log("Failed: ", toArray(o))
@@ -86,7 +86,7 @@ function testSimpleRealFFT2(debug) {
 		var input = new Float64Array(io[2*i])
 		var o = new Float64Array(io[2*i+1])
 		var output = new Float64Array(N)
-		fft.simple(output, input)
+		fft.packed(output, input)
 		for (var j = 0; j < N; j++) {
 			if (isNaN(output[j]) || Math.abs(o[j] - output[j]) > 1e-12) {
 				console.log("Failed: ", toArray(input))
@@ -95,7 +95,7 @@ function testSimpleRealFFT2(debug) {
 				break;
 			}
 		}
-		ifft.simple(output, o)
+		ifft.packed(output, o)
 		for (var k = 0; k < N; k++) {
 			if (isNaN(output[k]) || Math.abs(input[k] - output[k]/N) > 1e-12) {
 				console.log("Failed: ", toArray(o))
@@ -142,9 +142,9 @@ function testRealFFT(N, unpacked, debug) {
 	signals.forEach(function(signal) {
 		fill(input, signal.time)
 		if (unpacked) {
-			fft.unpacked(output, input)
-		} else {
 			fft.simple(output, input)
+		} else {
+			fft.packed(output, input)
 		}
 		diff = kahanDiff(signal.freq, 0, 1, output, 0, 1, 1, 1) // normalized
 		if ( isNaN(diff) || diff > epsilon) {
@@ -157,9 +157,9 @@ function testRealFFT(N, unpacked, debug) {
 
 		fill(input, signal.freq)
 		if (unpacked) {
-			ifft.unpacked(output, input)
-		} else {
 			ifft.simple(output, input)
+		} else {
+			ifft.packed(output, input)
 		}
 		diff = kahanDiff(signal.time, 0, 1, output, 0, 1, N, 1) // not normalized
 		if ( isNaN(diff) || diff > epsilon) {
@@ -208,8 +208,8 @@ function testRealFFTPrecision(N, epsilon) {
 	var inverted = new Float64Array(N)
 
 	fill(input, toArray(input).map(function(){return Math.random()}))
-	fft.simple(output, input)
-	ifft.simple(inverted, output)
+	fft.packed(output, input)
+	ifft.packed(inverted, output)
 	var diff = kahanDiff(input, 0, 1, inverted, 0, 1, N, 1)
 	if ( isNaN(diff) || diff > epsilon) {
 		console.log("Precision Failed:", N, ", Error: ", diff)
@@ -227,8 +227,8 @@ console.log("testing n = 4 to 64, unpacked")
 for (var i = 4; i <= 64; i += 2) {
 	testRealFFT(i, true)
 }
-console.log("testing precision, n = 2^2 to 2^20, powers")
-for (var i = 1; i < 20; i++ ) {
-	testRealFFTPrecision(2<<i, 1e-10)
-}
+// console.log("testing precision, n = 2^2 to 2^20, powers")
+// for (var i = 1; i < 20; i++ ) {
+// 	testRealFFTPrecision(2<<i, 1e-10)
+// }
 console.log("done")
