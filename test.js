@@ -113,7 +113,7 @@ function fill(output, input) {
 	}
 }
 
-function generateTestSignals(N) {
+function generateTestSignals(N, unpacked) {
 	return [
 		['DC', function(){return 1}],
 		['dirac', function(n){return n === 0 ? 1 : 0}],
@@ -123,24 +123,29 @@ function generateTestSignals(N) {
 		['nyquist', function(n) {return n%2}],
 		['white_noise', function() {return Math.random()}]
 	].map(function(param) {
-		return new Signal(param[0], param[1], N)
+		return new Signal(param[0], param[1], N, unpacked)
 	})
 }
 
 var epsilon = 1e-10
-function testRealFFT(N, debug) {
+function testRealFFT(N, unpacked, debug) {
 	if (debug) {
 		console.log("Testing N=",N)
 	}
+	var len = unpacked ? N+2 : N
 	var fft = new FFT.real(N)
 	var ifft = new FFT.inverse.real(N)
-	var input = new Float64Array(N)
-	var output = new Float64Array(N)
-	var signals = generateTestSignals(N)
+	var input = new Float64Array(len)
+	var output = new Float64Array(len)
+	var signals = generateTestSignals(N, unpacked)
 	var diff
 	signals.forEach(function(signal) {
 		fill(input, signal.time)
-		fft.simple(output, input)
+		if (unpacked) {
+			fft.unpacked(output, input)
+		} else {
+			fft.simple(output, input)
+		}
 		diff = kahanDiff(signal.freq, 0, 1, output, 0, 1, 1, 1) // normalized
 		if ( isNaN(diff) || diff > epsilon) {
 			console.log("Forward FFT Failed:", signal.name, N, ", Error: ", diff)
@@ -151,7 +156,11 @@ function testRealFFT(N, debug) {
 		}
 
 		fill(input, signal.freq)
-		ifft.simple(output, input)
+		if (unpacked) {
+			ifft.unpacked(output, input)
+		} else {
+			ifft.simple(output, input)
+		}
 		diff = kahanDiff(signal.time, 0, 1, output, 0, 1, N, 1) // not normalized
 		if ( isNaN(diff) || diff > epsilon) {
 			console.log("Inverse FFT Failed:", signal.name, N, ", Error: ", diff)
@@ -173,7 +182,7 @@ function makeBin(time, k, N) {
 	})
 }
 
-function Signal(name, fn, N) {
+function Signal(name, fn, N, unpacked) {
 	this.name = name;
 	this.time = []
 	for (var n = 0; n < N; n++) {
@@ -185,16 +194,22 @@ function Signal(name, fn, N) {
 		this.freq[2*k] = bin[0]
 		this.freq[2*k+1] = bin[1]
 	}
-	this.freq[1] = this.freq[N]
-	this.freq.length = N
+	if (!unpacked) {
+		this.freq[1] = this.freq[N]
+		this.freq.length = N
+	}
 }
 
 console.log("testing n = 4")
 testSimpleRealFFT();
 console.log("testing n = 8")
 testSimpleRealFFT2();
-console.log("testing n = 4 to 128, evens")
-for (var i = 4; i <= 128; i += 2) {
-	testRealFFT(i, false)
+console.log("testing n = 4 to 64, evens")
+for (var i = 4; i <= 64; i += 2) {
+	testRealFFT(i)
+}
+console.log("testing n = 4 to 64, unpacked")
+for (var i = 4; i <= 64; i += 2) {
+	testRealFFT(i, true)
 }
 console.log("done")
