@@ -1,4 +1,4 @@
-<%= $:.unshift('.'); require "#{File.dirname(__FILE__)}/../src/complex.rb"; File.read "#{File.dirname(__FILE__)}/../LICENSE" %>
+<%= $:.unshift('.'); require "#{File.dirname(__FILE__)}/../src/fft.rb"; File.read "#{File.dirname(__FILE__)}/../LICENSE" %>
 
 (function export_FFT(root, factory) {
 	if (typeof define === "function" && define.amd) {
@@ -16,18 +16,18 @@
 		var t = state.twiddle
 
 		for (var i = 0; i < m; i++) {
-			<%= load('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
-			<%= load('s1', 'output', 'outputOffset', 'i + m', 'outputStride') %>
+			<%= cload('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cload('s1', 'output', 'outputOffset', 'i + m', 'outputStride') %>
 
-			<%= load('t1', 't', 0, 'i', 'fStride') %>
+			<%= cload('t1', 't', 0, 'i', 'fStride') %>
 
 			<%= cmul('v1', 's1', 't1') %>
 
 			<%= cadd('r0', 's0', 'v1') %>
 			<%= csub('r1', 's0', 'v1') %>
 
-			<%= store('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
-			<%= store('r1', 'output', 'outputOffset', 'i + m', 'outputStride') %>
+			<%= cstore('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cstore('r1', 'output', 'outputOffset', 'i + m', 'outputStride') %>
 		}
 	}
 
@@ -39,20 +39,20 @@
 		var e = <%= imag('t', 0, 'm', 'fStride') %>
 
 		for (var i = 0; i < m; i++) {
-			<%= load('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cload('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
 
-			<%= load('s1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
-			<%= load('t1', 't', 0, 'i', 'fStride1') %>
+			<%= cload('s1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
+			<%= cload('t1', 't', 0, 'i', 'fStride1') %>
 			<%= cmul('v1', 's1', 't1') %>
 
-			<%= load('s2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
-			<%= load('t2', 't', 0, 'i', 'fStride2') %>
+			<%= cload('s2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
+			<%= cload('t2', 't', 0, 'i', 'fStride2') %>
 			<%= cmul('v2', 's2', 't2') %>
 
 			<%= cadd('i0', 'v1', 'v2') %>
 
 			<%= cadd('r0', 's0', 'i0') %>
-			<%= store('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cstore('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
 
 			var i1_r = s0_r - i0_r * 0.5
 			var i1_i = s0_i - i0_i * 0.5
@@ -62,11 +62,11 @@
 
 			var r1_r = i1_r - i2_i
 			var r1_i = i1_i + i2_r
-			<%= store('r1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
+			<%= cstore('r1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
 
 			var r2_r = i1_r + i2_i
 			var r2_i = i1_i - i2_r
-			<%= store('r2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
+			<%= cstore('r2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
 		}
 	}
 
@@ -76,18 +76,18 @@
 		var fStride1 = fStride, fStride2 = 2 * fStride, fStride3 = 3 * fStride
 
 		for (var i = 0; i < m; i++) {
-			<%= load('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cload('s0', 'output', 'outputOffset', 'i', 'outputStride') %>
 
-			<%= load('s1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
-			<%= load('t1', 't', 0, 'i', 'fStride1') %>
+			<%= cload('s1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
+			<%= cload('t1', 't', 0, 'i', 'fStride1') %>
 			<%= cmul('v1', 's1', 't1') %>
 
-			<%= load('s2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
-			<%= load('t2', 't', 0, 'i', 'fStride2') %>
+			<%= cload('s2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
+			<%= cload('t2', 't', 0, 'i', 'fStride2') %>
 			<%= cmul('v2', 's2', 't2') %>
 
-			<%= load('s3', 'output', 'outputOffset', 'i + m3', 'outputStride') %>
-			<%= load('t3', 't', 0, 'i', 'fStride3') %>
+			<%= cload('s3', 'output', 'outputOffset', 'i + m3', 'outputStride') %>
+			<%= cload('t3', 't', 0, 'i', 'fStride3') %>
 			<%= cmul('v3', 's3', 't3') %>
 
 			<%= cadd('i0', 's0', 'v2') %>
@@ -115,10 +115,10 @@
 				var r3_i = i1_i + i3_r
 			}
 
-			<%= store('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
-			<%= store('r1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
-			<%= store('r2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
-			<%= store('r3', 'output', 'outputOffset', 'i + m3', 'outputStride') %>
+			<%= cstore('r0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			<%= cstore('r1', 'output', 'outputOffset', 'i + m1', 'outputStride') %>
+			<%= cstore('r2', 'output', 'outputOffset', 'i + m2', 'outputStride') %>
+			<%= cstore('r3', 'output', 'outputOffset', 'i + m3', 'outputStride') %>
 		}
 	}
 
@@ -127,27 +127,27 @@
 
 		for (var u = 0; u < m; u++) {
 			for (var q1 = 0, k = u; q1 < p; q1++, k += m) {
-				<%= load('x0', 'output', 'outputOffset', 'k', 'outputStride') %>
-				<%= store('x0', 'scratch', 'q1') %>
+				<%= cload('x0', 'output', 'outputOffset', 'k', 'outputStride') %>
+				<%= cstore('x0', 'scratch', 'q1') %>
 			}
 
 			for (var q1 = 0, k = u; q1 < p; q1++, k += m) {
 				var tOffset = 0
 
-				<%= load('x0', 'scratch', 0) %>
-				<%= store('x0', 'output', 'outputOffset', 'k', 'outputStride') %>
+				<%= cload('x0', 'scratch', 0) %>
+				<%= cstore('x0', 'output', 'outputOffset', 'k', 'outputStride') %>
 
 				for (var q = 1; q < p; q++) {
 					tOffset = (tOffset + fStride * k) % n
 
-					<%= load('s0', 'output', 'outputOffset', 'k', 'outputStride') %>
+					<%= cload('s0', 'output', 'outputOffset', 'k', 'outputStride') %>
 
-					<%= load('s1', 'scratch', 'q') %>
-					<%= load('t1', 't', 'tOffset') %>
+					<%= cload('s1', 'scratch', 'q') %>
+					<%= cload('t1', 't', 'tOffset') %>
 					<%= cmul('v1', 's1', 't1') %>
 
 					<%= cadd('r0', 's0', 'v1') %>
-					<%= store('r0', 'output', 'outputOffset', 'k', 'outputStride') %>
+					<%= cstore('r0', 'output', 'outputOffset', 'k', 'outputStride') %>
 				}
 			}
 		}
@@ -159,8 +159,8 @@
 
 		if (m == 1) {
 			for (var i = 0; i < p * m; i++) {
-				<%= load('x0', 'f', 'fOffset', 'i', 'fStride * inputStride') %>
-				<%= store('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
+				<%= cload('x0', 'f', 'fOffset', 'i', 'fStride * inputStride') %>
+				<%= cstore('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
 			}
 		} else {
 			for (var i = 0; i < p; i++) {
@@ -255,7 +255,7 @@
 				var x0_r = input[inputOffset + inputStride * i]
 				var x0_i = 0.0
 
-				<%= store('x0', 'this.state.scratch', 'i') %>
+				<%= cstore('x0', 'this.state.scratch', 'i') %>
 			}
 
 			work(output, outputOffset, outputStride, this.state.scratch, 0, 1, 1, this.state.factors.slice(), this.state)
@@ -264,9 +264,9 @@
 				work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 
 				for (var i = 0; i < this.state.n; i++) {
-					<%= load('x0', 'this.state.scratch', 'i') %>
+					<%= cload('x0', 'this.state.scratch', 'i') %>
 
-					<%= store('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
+					<%= cstore('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
 				}
 			} else {
 				work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
@@ -282,43 +282,42 @@
 		var normalize = state.inverse ? 1 : 0.5
 
 		for(n=state.n>>1; n>0; n--) {
-			<%= load('d0', 'fdata', 'offset', 'n', 'stride') %>
-			<%= load('d1', 'fdata', 'offset', 'f-n', 'stride') %>
+			<%= cload('d0', 'fdata', 'offset', 'n', 'stride') %>
+			<%= cload('d1', 'fdata', 'offset', 'f-n', 'stride') %>
 
-			<%= load('t0', 'state.twiddleReal', 'n') %>
+			<%= cload('t0', 'state.twiddleReal', 'n') %>
 
 			<%= cadd('x0', 'd0', 'd1') %>
 			<%= csub('x1', 'd0', 'd1') %>
 
 			var t_i = (x1_r * t0_i + x0_i * t0_r) * flip
 			var t_r = (x0_i * t0_i - x1_r * t0_r) * flip
+
 			var r0_r = (x0_r + t_i) * normalize
 			var r0_i = (t_r + x1_i) * normalize
 
 			var r1_r = (x0_r - t_i) * normalize
 			var r1_i =  (t_r - x1_i) * normalize
 
-			<%= store('r0', 'fdata', 'offset', 'n', 'stride') %>
-			<%= store('r1', 'fdata', 'offset', 'f-n', 'stride') %>
+			<%= cstore('r0', 'fdata', 'offset', 'n', 'stride') %>
+			<%= cstore('r1', 'fdata', 'offset', 'f-n', 'stride') %>
 		}
-		<%= load('y0', 'fdata', 'offset', '0') %>
+		<%= cload('y0', 'fdata', 'offset', '0') %>
 		if (packed) {
-			var y1_r = y0_r + y0_i
-			var y1_i = y0_r - y0_i
-			<%= store('y1', 'fdata', 'offset', '0') %>
+			<%= real('fdata', 'offset') %> = y0_r + y0_i
+			<%= imag('fdata', 'offset') %> = y0_r - y0_i
 		} else {
 			if (state.inverse) {
-				<%= load('y1', 'fdata', 'offset', 'f', 'stride') %>
-				var y2_r = y0_r + y1_r
-				var y2_i = y0_r - y1_r
-				<%= store('y2', 'fdata', 'offset', '0') %>
+				<%= cload('y1', 'fdata', 'offset', 'f', 'stride') %>
+				<%= real('fdata', 'offset') %> = y0_r + y1_r
+				<%= imag('fdata', 'offset') %> = y0_r - y1_r
 			} else {
 				var y1_r = y0_r - y0_i
 				var y1_i = 0
 				y0_r = y0_r + y0_i
 				y0_i = 0
-				<%= store('y0', 'fdata', 'offset', '0') %>
-				<%= store('y1', 'fdata', 'offset', 'f', 'stride') %>
+				<%= cstore('y0', 'fdata', 'offset', '0') %>
+				<%= cstore('y1', 'fdata', 'offset', 'f', 'stride') %>
 			}
 		}
 	}
@@ -358,9 +357,9 @@
 			work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
 
 			for (var i = 0; i < this.state.n; i++) {
-				<%= load('x0', 'this.state.scratch', 'i') %>
+				<%= cload('x0', 'this.state.scratch', 'i') %>
 
-				<%= store('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
+				<%= cstore('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
 			}
 		} else {
 			work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
