@@ -289,14 +289,14 @@
 			<%= cadd('x0', 'd0', 'd1') %>
 			<%= csub('x1', 'd0', 'd1') %>
 
-			var t_i = (x1_r * t0_i + x0_i * t0_r) * flip
-			var t_r = (x0_i * t0_i - x1_r * t0_r) * flip
+			var t_r = (x1_r * t0_i + x0_i * t0_r) * flip
+			var t_i = (x0_i * t0_i - x1_r * t0_r) * flip
 
-			var r0_r = (x0_r + t_i) * normalize
-			var r0_i = (t_r + x1_i) * normalize
+			var r0_r = (x0_r + t_r) * normalize
+			var r0_i = (t_i + x1_i) * normalize
 
-			var r1_r = (x0_r - t_i) * normalize
-			var r1_i =  (t_r - x1_i) * normalize
+			var r1_r = (x0_r - t_r) * normalize
+			var r1_i =  (t_i - x1_i) * normalize
 
 			<%= cstore('r0', 'fdata', 'offset', 'n', 'stride') %>
 			<%= cstore('r1', 'fdata', 'offset', 'f-n', 'stride') %>
