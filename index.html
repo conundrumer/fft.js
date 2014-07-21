@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Discrete Fourier Transform Demos</title>
+	<style type="text/css">
+	body {
+		font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif;
+		text-align: center;
+	}
+	h1, h2, h3 {
+		font-weight: normal;
+	}
+	h1 {
+		font-size: 2.9em;
+	}
+	h2 {
+		font-size: 1.9em;
+		margin-bottom: 0.2em;
+	}
+	h3 {
+		margin-top: 0.5em;
+	}
+	.section {
+		width: 100%;
+		padding-top: 10px;
+		padding-bottom: 20px;
+	}
+	.column {
+		width: 45%;
+		padding-left: 10px; padding-right: 10px;
+		display: inline-block;
+	}
+	canvas {
+		width: 100%;
+		border: 1px solid black;
+	}
+	.two-d canvas {
+		width: 512px;
+		height: 512px;
+	}
+	@media (max-width: 1150px) {
+		.two-d canvas {
+			width: 256px;
+			height: 256px;
+		}
+	}
+	@media (max-width: 700px) {
+		.column {
+			width: 90%;
+		}
+		.two-d .column {
+			width: 45%;
+		}
+	}
+	@media (max-width: 570px) {
+		.two-d .column {
+			width: 90%;
+		}
+	}
+	</style>
+	<script src="lib/fft.js"></script>
+	<script src="demo.js"></script>
+</head>
+<body>
+	<h1>Discrete Fourier Transform Demos</h1>
+	<div class="section complex">
+		<h2>Complex</h2>
+		<div class="column left">
+			<h3>Time</h3>
+			<canvas class="time"></canvas>
+		</div>
+		<div class="column right">
+			<h3>Frequency</h3>
+			<canvas class="freq"></canvas>
+		</div>
+	</div>
+	<hr/>
+	<div class="section real">
+		<h2>Real</h2>
+		<div class="column left">
+			<h3>Time</h3>
+			<canvas class="time"></canvas>
+		</div>
+		<div class="column right">
+			<h3>Frequency (half spectrum)</h3>
+			<canvas class="freq"></canvas>
+		</div>
+	</div>
+	<hr/>
+	<div class="section two-d">
+		<h2>2D</h2>
+		<div class="column left">
+			<h3>Image</h3>
+			<canvas class="image"></canvas>
+		</div>
+		<div class="column right">
+			<h3>Transform</h3>
+			<canvas class="transform"></canvas>
+		</div>
+	</div>
+</body>
+</html>
