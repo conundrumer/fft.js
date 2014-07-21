@@ -6,7 +6,6 @@
 	} else if (typeof exports === 'object') {
 		module.exports = factory()
 	} else {
-		console.log("else")
 		root.FFT = factory()
 	}
 }(this, function module_FFT() {
