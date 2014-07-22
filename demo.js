@@ -1,17 +1,22 @@
-window.onload = main
-
-function main() {
-	console.log("ready")
-	var c = new DrawingCanvas(document.querySelector('.complex .time'))
+// pretend jquery syntax sugar
+var $ = function(node) {
+	if (typeof(node) === "string") // node is a selector
+		return document.querySelector(node);
+	else
+		return {
+			on: node.addEventListener.bind(node),
+			off: node.removeEventListener.bind(node)
+		}
 }
 
-var MOUSE = 0
-var TOUCH = 1
+function clamp(value, min, max) {
+	return Math.max(min, Math.min(max, value))
+}
 
 function withMouse(node, fn) {
 	return function (event) {
 		event.preventDefault()
-		fn(event.offsetX, event.offsetY)
+		fn(event.clientX - node.offsetLeft, event.clientY - node.offsetTop)
 	}
 }
 function withTouch(node, fn) {
@@ -21,46 +26,60 @@ function withTouch(node, fn) {
 		fn(touch.pageX - node.offsetLeft, touch.pageY - node.offsetTop)
 	}
 }
-
-function DrawingCanvas(canvas) {
-	this.canvas = canvas;
-	this.ctx = canvas.getContext('2d')
-	canvas.addEventListener('mousedown', withMouse(canvas, this.drawStart.bind(this, MOUSE)))
-	canvas.addEventListener('touchstart', withTouch(canvas, this.drawStart.bind(this, TOUCH)))
+var MOUSE = 0
+var TOUCH = 1
+// a DOM node with event handlers for click/drag mouse and touch interaction
+function DrawingNode(node) {
+	this.node = node;
+	this.setDrawFn(function (xOld,yOld,x,y) {
+		console.log(xOld,yOld," to ",x,y)
+	})
+	$(node).on('mousedown', withMouse(node, this.drawStart.bind(this, MOUSE)))
+	$(node).on('touchstart', withTouch(node, this.drawStart.bind(this, TOUCH)))
 }
-DrawingCanvas.prototype = {
+DrawingNode.prototype = {
+	get width() {
+		return this.node.clientWidth
+	},
+	get height() {
+		return this.node.clientHeight
+	},
+	setDrawFn: function(drawFn) {
+		this.doDraw = drawFn
+	},
 	drawStart: function(pointerType, x, y) {
-		var canvas = this.canvas,
-			doDraw = /*this.doDraw.bind(this)*/ function (xOld,yOld,x,y) {
-				console.log(xOld,yOld," to ",x,y)
-			}
+		var node = this.node,
+			doDraw = this.doDraw
+		// x and y are closure'd here
 		function draw (xNext, yNext) {
+			xNext = clamp(xNext, 0, node.clientWidth)
+			yNext = clamp(yNext, 0, node.clientHeight)
 			doDraw(x, y, xNext, yNext)
 			x = xNext
 			y = yNext
 		}
-		event.preventDefault()
+		draw(x, y);
+
+		function addEventHandlers(moveEventName, endEventName, withPointer) {
+			var onMove = withPointer(node, draw)
+			function onEnd() {
+				$(window).off(moveEventName, onMove, true)
+				$(window).off(endEventName, onEnd, false)
+			}
+			$(window).on(moveEventName, onMove, true)
+			$(window).on(endEventName, onEnd, false)
+		}
 		switch (pointerType) {
 			case MOUSE:
-				var mouseDraw = withMouse(canvas, draw)
-				function removeMouse() {
-					canvas.removeEventListener('mousemove', mouseDraw, true)
-					canvas.removeEventListener('mouseup', removeMouse, false)
-					canvas.removeEventListener('mouseleave', removeMouse, false)
-				}
-				canvas.addEventListener('mousemove', mouseDraw, true)
-				canvas.addEventListener('mouseup', removeMouse, false)
-				canvas.addEventListener('mouseleave', removeMouse, false)
+				addEventHandlers('mousemove', 'mouseup', withMouse)
 				break
 			case TOUCH:
-				var touchDraw = withTouch(canvas, draw)
-				canvas.addEventListener('touchmove', touchDraw, true)
-				canvas.addEventListener('touchend', function removeTouch() {
-					canvas.removeEventListener('touchmove', touchDraw, true)
-					canvas.removeEventListener('touchend', removeTouch, false)
-				}, false)
+				addEventHandlers('touchmove', 'touchend', withTouch)
 				break
 		}
-		draw(x, y);
 	},
+}
+
+window.onload = function main() {
+	var c = new DrawingNode($('.complex .time'))
 }
