@@ -28,12 +28,16 @@ function withTouch(node, fn) {
 }
 var MOUSE = 0
 var TOUCH = 1
-// a DOM node with event handlers for click/drag mouse and touch interaction
-function DrawingNode(node) {
+// a DOM node with event handlers for click/hold/drag mouse and touch interaction
+function DrawingNode(node, doClamp) {
 	this.node = node;
+	this.doClamp = doClamp
 	this.setDrawFn(function (xOld,yOld,x,y) {
 		console.log(xOld,yOld," to ",x,y)
 	})
+	this.setHoldFn(function(x,y){
+		console.log("holding at",x,y)
+	}, 100)
 	$(node).on('mousedown', withMouse(node, this.drawStart.bind(this, MOUSE)))
 	$(node).on('touchstart', withTouch(node, this.drawStart.bind(this, TOUCH)))
 }
@@ -44,25 +48,37 @@ DrawingNode.prototype = {
 	get height() {
 		return this.node.clientHeight
 	},
+	// make sure to bind the input functions
 	setDrawFn: function(drawFn) {
-		this.doDraw = drawFn
+		this.onDraw = drawFn
+	},
+	setHoldFn: function(holdFn, interval) {
+		this.onHold = holdFn
+		this.holdInterval = interval
 	},
 	drawStart: function(pointerType, x, y) {
 		var node = this.node,
-			doDraw = this.doDraw
-		// x and y are closure'd here
+			doClamp = this.doClamp,
+			onDraw = this.onDraw,
+			onHold = this.onHold
+		// x and y are closure'd
 		function draw (xNext, yNext) {
-			xNext = clamp(xNext, 0, node.clientWidth)
-			yNext = clamp(yNext, 0, node.clientHeight)
-			doDraw(x, y, xNext, yNext)
+			if (doClamp) {
+				xNext = clamp(xNext, 0, node.clientWidth)
+				yNext = clamp(yNext, 0, node.clientHeight)
+			}
+			onDraw(x, y, xNext, yNext)
 			x = xNext
 			y = yNext
 		}
 		draw(x, y);
 
-		function addEventHandlers(moveEventName, endEventName, withPointer) {
+		var holdTimer = setInterval(function(){ onHold(x, y) }, this.holdInterval)
+
+		function addMoveAndEndHandlers(moveEventName, endEventName, withPointer) {
 			var onMove = withPointer(node, draw)
 			function onEnd() {
+				clearInterval(holdTimer)
 				$(window).off(moveEventName, onMove, true)
 				$(window).off(endEventName, onEnd, false)
 			}
@@ -71,15 +87,15 @@ DrawingNode.prototype = {
 		}
 		switch (pointerType) {
 			case MOUSE:
-				addEventHandlers('mousemove', 'mouseup', withMouse)
+				addMoveAndEndHandlers('mousemove', 'mouseup', withMouse)
 				break
 			case TOUCH:
-				addEventHandlers('touchmove', 'touchend', withTouch)
+				addMoveAndEndHandlers('touchmove', 'touchend', withTouch)
 				break
 		}
 	},
 }
 
 window.onload = function main() {
-	var c = new DrawingNode($('.complex .time'))
+	var c = new DrawingNode($('.complex .time'), true)
 }
