@@ -28,9 +28,9 @@ function withTouch(node, fn) {
 }
 var MOUSE = 0
 var TOUCH = 1
-// a DOM node with event handlers for click/hold/drag mouse and touch interaction
-function DrawingNode(node, noClamp) {
-	this.node = node;
+// a canvas with event handlers for click/hold/drag mouse and touch interaction
+function DrawingCanvas(canvas, noClamp) {
+	this.canvas = canvas;
 	this.doClamp = !noClamp
 	this.setDrawFn(function (xOld,yOld,x,y) {
 		console.log(xOld,yOld," to ",x,y)
@@ -38,15 +38,27 @@ function DrawingNode(node, noClamp) {
 	this.setHoldFn(function(x,y){
 		console.log("holding at",x,y)
 	}, 100)
-	$(node).on('mousedown', withMouse(node, this.drawStart.bind(this, MOUSE)))
-	$(node).on('touchstart', withTouch(node, this.drawStart.bind(this, TOUCH)))
+	$(canvas).on('mousedown', withMouse(canvas, this.drawStart.bind(this, MOUSE)))
+	$(canvas).on('touchstart', withTouch(canvas, this.drawStart.bind(this, TOUCH)))
+	var resizeFrame
+	function onResize(){
+		cancelAnimationFrame(resizeFrame)
+		resizeFrame = requestAnimationFrame(function(){
+			canvas.width = canvas.clientWidth
+			canvas.height = canvas.clientWidth / 2
+			canvas.style.height = canvas.height + "px"
+		})
+	}
+	$(canvas).on('transitionend', onResize)
+	$(window).on('resize', onResize)
+	onResize()
 }
-DrawingNode.prototype = {
+DrawingCanvas.prototype = {
 	get width() {
-		return this.node.clientWidth
+		return this.canvas.clientWidth
 	},
 	get height() {
-		return this.node.clientHeight
+		return this.canvas.clientHeight
 	},
 	// make sure to bind the input functions
 	setDrawFn: function(drawFn) {
@@ -57,7 +69,7 @@ DrawingNode.prototype = {
 		this.holdInterval = interval
 	},
 	drawStart: function(pointerType, x, y) {
-		var node = this.node,
+		var canvas = this.canvas,
 			doClamp = this.doClamp,
 			onDraw = this.onDraw,
 			onHold = this.onHold,
@@ -66,8 +78,8 @@ DrawingNode.prototype = {
 		// x and y are closure'd
 		function draw (xNext, yNext) {
 			if (doClamp) {
-				xNext = clamp(xNext, 0, node.clientWidth)
-				yNext = clamp(yNext, 0, node.clientHeight)
+				xNext = clamp(xNext, 0, canvas.clientWidth-1)
+				yNext = clamp(yNext, 0, canvas.clientHeight-1)
 			}
 			onDraw(x, y, xNext, yNext)
 			x = xNext
@@ -80,7 +92,7 @@ DrawingNode.prototype = {
 		draw(x, y);
 
 		function addMoveAndEndHandlers(moveEventName, endEventName, withPointer) {
-			var onMove = onDraw && withPointer(node, draw)
+			var onMove = onDraw && withPointer(canvas, draw)
 			function onEnd() {
 				clearInterval(holdTimer)
 				$(window).off(moveEventName, onMove, true)
@@ -100,8 +112,13 @@ DrawingNode.prototype = {
 	},
 }
 
-
-
 window.onload = function main() {
-	var c = new DrawingNode($('.complex .time'))
+	var canvas = new DrawingCanvas($('.complex .time'))
+	var canvas2 = new DrawingCanvas($('.complex .freq'))
+	// var c = canvas.getContext('2d')
+
+	// window.onresize = function() {
+	// 	canvas.width = canvas.clientWidth
+	// 	canvas.height = canvas.clientHeight
+	// }
 }
