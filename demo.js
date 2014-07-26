@@ -31,7 +31,8 @@ var TOUCH = 1
 // a canvas with event handlers for click/hold/drag mouse and touch interaction
 function DrawingCanvas(canvas, onresize, noClamp) {
 	this.canvas = canvas;
-	this.doClamp = false /*!noClamp*/
+	this.doClamp = !noClamp
+	this.holdX = false
 	this.setDrawFn(function (xOld,yOld,x,y) {
 		console.log(xOld,yOld," to ",x,y)
 	})
@@ -74,9 +75,13 @@ DrawingCanvas.prototype = {
 			onDraw = this.onDraw,
 			onHold = this.onHold,
 			holdInterval = this.holdInterval,
-			holdTimer
+			holdTimer,
+			holdX = this.holdX
 		// x and y are closure'd
 		function draw (xNext, yNext) {
+			if (holdX) {
+				xNext = x
+			}
 			if (doClamp) {
 				xNext = clamp(xNext, 0, width-1)
 				yNext = clamp(yNext, 0, height-1)
@@ -138,9 +143,38 @@ Canvas1DPair.prototype = {
 		var ctx = this.ctx
 		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 		ctx.lineJoin = "round";
-		ctx.lineWidth = 2;
-		this.drawLine(this.signal2, 'blue')
-		this.drawLine(this.signal1, 'red')
+		ctx.lineWidth = 1.5;
+		if (this.signal1.length > 64) {
+			this.drawLine(this.signal2, 'blue')
+			this.drawLine(this.signal1, 'red')
+		} else {
+			ctx.strokeStyle = 'black'
+			ctx.beginPath()
+			ctx.moveTo(0, ctx.canvas.height/2)
+			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2)
+			ctx.stroke()
+			this.drawStem(this.signal2, 'blue')
+			this.drawStem(this.signal1, 'red')
+		}
+	},
+	drawStem: function(signal, color) {
+		var ctx = this.ctx,
+			width = ctx.canvas.width,
+			height = ctx.canvas.height,
+			len = signal.length,
+			radius = Math.min(20, width / len / 2 - 1)
+		ctx.strokeStyle = color;
+		for (var i = 0; i < len; i++) {
+			var x = width * i / (len - 1)
+			var y = height * (signal.get(i)+1)/2
+			ctx.beginPath()
+			ctx.moveTo(x, height/2)
+			ctx.lineTo(x, y)
+			ctx.stroke()
+			ctx.beginPath()
+			ctx.arc(x, y, radius, 0, 2*Math.PI)
+			ctx.stroke()
+		}
 	},
 	drawLine: function(signal, color) {
 		var ctx = this.ctx,
@@ -160,14 +194,13 @@ Canvas1DPair.prototype = {
 			}
 		}
 		ctx.stroke()
-		ctx.closePath()
 	}
 }
 
 // float64array wrappers
 function ComplexSignal(array, ifImag, onUpdate) {
 	this.array = array
-	this.length = array.length / 2
+	this.length = array.length/2
 	this.ifImag = ifImag ? 1 : 0
 	this.onUpdate = onUpdate
 }
@@ -198,10 +231,10 @@ function TwoWayFFT(FFT, IFFT) {
 }
 TwoWayFFT.prototype = {
 	setLength: function(n) {
-		this.time = new Float64Array(n) // modify these
-		this.freq = new Float64Array(n)
-		this.fft = new this.FFT(n/2, false)
-		this.ifft = new this.IFFT(n/2)
+		this.time = new Float64Array(2*n) // modify these
+		this.freq = new Float64Array(2*n)
+		this.fft = new this.FFT(n, false)
+		this.ifft = new this.IFFT(n)
 		// this.onUpdateTime()
 		// this.onUpdateFreq()
 	},
@@ -220,7 +253,6 @@ TwoWayFFT.prototype = {
 
 function ComplexDFTCanvas(timeCanvas, freqCanvas, n) {
 	// model
-	this.n = n
 	this.signals = new TwoWayFFT(FFT.complex, FFT.inverse.complex)
 
 	// view
@@ -244,11 +276,12 @@ function ComplexDFTCanvas(timeCanvas, freqCanvas, n) {
 }
 ComplexDFTCanvas.prototype = {
 	setLength: function(n) {
+		this.n = n;
 		this.signals.setLength(n)
 		var updateTime = this.signals.updateTime.bind(this.signals)
 		var updateFreq = this.signals.updateFreq.bind(this.signals)
 		this.time = ComplexSignal.create(this.signals.time, updateTime)
-		this.freq = ComplexSignal.create(this.signals.freq, updateFreq, n)
+		this.freq = ComplexSignal.create(this.signals.freq, updateFreq)
 
 		this.timeCanvas.setSignals(this.time.real, this.time.imag)
 		this.freqCanvas.setSignals(this.freq.real, this.freq.imag)
@@ -256,8 +289,8 @@ ComplexDFTCanvas.prototype = {
 	},
 	onDraw: function(signalType, x0,y0,x1,y1) {
 		 // normalized to array index
-		x0 = clamp(Math.floor(x0*this.n/2), 0, this.n/2 -1)
-		x1 = clamp(Math.floor(x1*this.n/2), 0, this.n/2 -1)
+		x0 = Math.round(x0*(this.n-1))
+		x1 = Math.round(x1*(this.n-1))
 		y0 = (2*y0)-1
 		y1 = (2*y1)-1
 		if (x1-x0 === 0) {
@@ -283,11 +316,38 @@ ComplexDFTCanvas.prototype = {
 		if (options.drawType) {
 			this.select = options.drawType
 		}
+	},
+	addControllers: function(newN, real, imag, clear, holdSample) {
+		$(newN).on('change', function(e){this.setLength(e.target.valueAsNumber)}.bind(this))
+		$(real).on('change', this.setOptions.bind(this, { drawType: 'real' }))
+		$(imag).on('change', this.setOptions.bind(this, { drawType: 'imag' }))
+		$(clear).on('click', function(){this.setLength(this.n)}.bind(this))
+		$(holdSample).on('click', function(e){
+			this.timeDraw.holdX = e.target.checked
+			this.freqDraw.holdX = e.target.checked
+		}.bind(this))
 	}
 }
 
 window.onload = function main() {
-	var complex = new ComplexDFTCanvas($('.complex .time'),$('.complex .freq'), 256)
+	var complex = new ComplexDFTCanvas($('.complex .time'),$('.complex .freq'), 128)
+	var slider = $('.complexControl .sliderN')
+	slider.step = 4
+	slider.min = 4
+	slider.max = 256
+	slider.value = 128
+	function onSlide(e){
+		var value = e ? e.target.value : slider.value
+		$('.complexControl .rangeDisplay').textContent = "n: " + value
+	}
+	onSlide()
+	$(slider).on('input', onSlide)
+	complex.addControllers( slider,
+		$('.complexControl .radioReal'),
+		$('.complexControl .radioImag'),
+		$('.complexControl .buttonClear'),
+		$('.complexControl .checkHold')
+	)
 	// var c = canvas.getContext('2d')
 
 	// window.onresize = function() {
