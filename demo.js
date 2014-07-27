@@ -125,7 +125,6 @@ function Canvas1DPair (canvas, scale) {
 	this.updated = true
 	this.signal1 = null
 	this.signal2 = null
-	this.scale = scale || 1
 }
 Canvas1DPair.prototype = {
 	setSignals: function(signal1, signal2) {
@@ -162,7 +161,7 @@ Canvas1DPair.prototype = {
 	plotPoint: function(signal, plotfn) {
 		for (var i = 0; i < signal.length; i++) {
 			var x = this.ctx.canvas.width * i / (signal.length - 1)
-			var y = this.ctx.canvas.height * (signal.get(i)*this.scale+1)/2
+			var y = this.ctx.canvas.height * (signal.get(i)+1)/2
 			plotfn(x, y)
 		}
 	},
@@ -194,27 +193,29 @@ Canvas1DPair.prototype = {
 }
 
 // float64array wrappers
-function ComplexSignal(array, onUpdate, ifImag) {
+function ComplexSignal(array, onUpdate, scale, ifImag) {
 	this.array = array
 	this.length = array.length/2
 	this.onUpdate = onUpdate
 	this.ifImag = ifImag ? 1 : 0
+	this.scale = scale || 1
 }
 ComplexSignal.prototype = {
 	get: function(i) {
-		return this.array[2*i + this.ifImag]
+		return this.array[2*i + this.ifImag] * this.scale
 	},
 	set: function(i, x) {
-		this.array[2*i + this.ifImag] = x
+		this.array[2*i + this.ifImag] = x / this.scale
 		this.onUpdate()
 	}
 }
-ComplexSignal.create = function(array, onUpdate) {
+ComplexSignal.create = function(array, onUpdate, scale) {
 	return {
-		real: new ComplexSignal(array, onUpdate, false),
-		imag: new ComplexSignal(array, onUpdate, true)
+		real: new ComplexSignal(array, onUpdate, scale, false),
+		imag: new ComplexSignal(array, onUpdate, scale, true)
 	}
 }
+
 
 // holds a signal pair and updates stuff connected to them
 function TwoWayFFT(FFT, IFFT) {
@@ -291,19 +292,14 @@ ComplexDFTCanvas.prototype = {
 	round: function(x) {
 		return Math.round(x*(this.n-1))
 	},
-	scale: function(x, signalType) {
-		switch (signalType) {
-			case 'time':
-				return 2*x - 1
-			case 'freq':
-				return (2*x-1)/2
-		}
+	scale: function(y) {
+		return 2*y - 1
 	},
 	getTimeSignal: function(onUpdate) {
 		return ComplexSignal.create(this.signals.time, onUpdate)
 	},
 	getFreqSignal: function(onUpdate) {
-		return ComplexSignal.create(this.signals.freq, onUpdate)
+		return ComplexSignal.create(this.signals.freq, onUpdate, 2)
 	},
 	setLength: function(n) {
 		this.n = n;
