@@ -120,10 +120,11 @@ DrawingCanvas.prototype = {
 }
 
 // canvas for displaying a pair of 1d signals
-function Canvas1DPair (canvas, signal1, signal2) {
+function Canvas1DPair (canvas) {
 	this.ctx = canvas.getContext('2d')
 	this.updated = true
-	this.setSignals(signal1, signal2)
+	this.signal1 = null
+	this.signal2 = null
 }
 Canvas1DPair.prototype = {
 	setSignals: function(signal1, signal2) {
@@ -145,16 +146,24 @@ Canvas1DPair.prototype = {
 		ctx.lineJoin = "round";
 		ctx.lineWidth = 1.5;
 		if (this.signal1.length > 64) {
-			this.drawLine(this.signal2, 'blue')
-			this.drawLine(this.signal1, 'red')
+			if (this.signal2) {
+				this.drawLine(this.signal2, 'blue')
+				this.drawLine(this.signal1, 'red')
+			} else {
+				this.drawLine(this.signal1, 'black')
+			}
 		} else {
 			ctx.strokeStyle = 'black'
 			ctx.beginPath()
 			ctx.moveTo(0, ctx.canvas.height/2)
 			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2)
 			ctx.stroke()
-			this.drawStem(this.signal2, 'blue')
-			this.drawStem(this.signal1, 'red')
+			if (this.signal2) {
+				this.drawStem(this.signal2, 'blue')
+				this.drawStem(this.signal1, 'red')
+			} else {
+				this.drawStem(this.signal1, 'black')
+			}
 		}
 	},
 	drawStem: function(signal, color) {
@@ -198,11 +207,11 @@ Canvas1DPair.prototype = {
 }
 
 // float64array wrappers
-function ComplexSignal(array, ifImag, onUpdate) {
+function ComplexSignal(array, onUpdate, ifImag) {
 	this.array = array
 	this.length = array.length/2
-	this.ifImag = ifImag ? 1 : 0
 	this.onUpdate = onUpdate
+	this.ifImag = ifImag ? 1 : 0
 }
 ComplexSignal.prototype = {
 	get: function(i) {
@@ -215,8 +224,8 @@ ComplexSignal.prototype = {
 }
 ComplexSignal.create = function(array, onUpdate) {
 	return {
-		real: new ComplexSignal(array, false, onUpdate),
-		imag: new ComplexSignal(array, true, onUpdate)
+		real: new ComplexSignal(array, onUpdate, false),
+		imag: new ComplexSignal(array, onUpdate, true)
 	}
 }
 
@@ -251,48 +260,77 @@ TwoWayFFT.prototype = {
 	}
 }
 
-function ComplexDFTCanvas(timeCanvas, freqCanvas, n) {
+function ComplexDFTCanvas(nodes) {
+	this.n = null
+	this.select = 'real'
 	// model
 	this.signals = new TwoWayFFT(FFT.complex, FFT.inverse.complex)
 
 	// view
-	this.timeCanvas = new Canvas1DPair(timeCanvas)
-	this.freqCanvas = new Canvas1DPair(freqCanvas)
-	// this.signals.onUpdateTime = this.timeCanvas.doUpdate.bind(this.timeCanvas)
-	// this.signals.onUpdateFreq = this.freqCanvas.doUpdate.bind(this.freqCanvas)
-
-	this.setLength(n)
+	this.canvas = {
+		time: new Canvas1DPair(nodes.time),
+		freq: new Canvas1DPair(nodes.freq)
+	}
 
 	// controller
-	this.timeDraw = new DrawingCanvas(timeCanvas, this.timeCanvas.doUpdate.bind(this.timeCanvas))
-	this.timeDraw.setDrawFn(this.onDraw.bind(this, 'time'))
-	this.timeDraw.setHoldFn(null)
+	function newDrawingCanvas(canvas, type) {
+		var draw = new DrawingCanvas(canvas, this.canvas[type].doUpdate.bind(this.canvas[type]))
+		draw.setDrawFn(this.onDraw.bind(this, type))
+		draw.setHoldFn(null)
+		return draw
+	}
+	this.draw = {
+		time: newDrawingCanvas.call(this, nodes.time, 'time'),
+		freq: newDrawingCanvas.call(this, nodes.freq, 'freq')
+	}
 
-	this.freqDraw = new DrawingCanvas(freqCanvas, this.freqCanvas.doUpdate.bind(this.freqCanvas))
-	this.freqDraw.setDrawFn(this.onDraw.bind(this, 'freq'))
-	this.freqDraw.setHoldFn(null)
-
-	this.select = 'real'
+	$(nodes.slider).on('change', function(e){
+		this.setLength(e.target.valueAsNumber)
+	}.bind(this))
+	nodes.radios.forEach(function(radio){
+		$(radio).on('change', function(e) {
+			this.select = e.target.value
+		}.bind(this))
+	}.bind(this))
+	$(nodes.clear).on('click', function(){
+		this.setLength(this.n)
+	}.bind(this))
+	$(nodes.holdSample).on('click', function(e){
+		this.draw.time.holdX = e.target.checked
+		this.draw.freq.holdX = e.target.checked
+	}.bind(this))
 }
 ComplexDFTCanvas.prototype = {
+	scale: {
+		time: function(x) {
+			return 2*x - 1
+		},
+		freq: function(x) {
+			return 2*x - 1
+		}
+	},
+	getTimeSignal: function(onUpdate) {
+		return ComplexSignal.create(this.signals.time, onUpdate)
+	},
+	getFreqSignal: function(onUpdate) {
+		return ComplexSignal.create(this.signals.freq, onUpdate)
+	},
 	setLength: function(n) {
 		this.n = n;
 		this.signals.setLength(n)
-		var updateTime = this.signals.updateTime.bind(this.signals)
-		var updateFreq = this.signals.updateFreq.bind(this.signals)
-		this.time = ComplexSignal.create(this.signals.time, updateTime)
-		this.freq = ComplexSignal.create(this.signals.freq, updateFreq)
+		this.time = this.getTimeSignal(this.signals.updateTime.bind(this.signals))
+		this.freq = this.getFreqSignal(this.signals.updateFreq.bind(this.signals))
 
-		this.timeCanvas.setSignals(this.time.real, this.time.imag)
-		this.freqCanvas.setSignals(this.freq.real, this.freq.imag)
-		this.updateView()
+		this.canvas.time.setSignals(this.time.real, this.time.imag)
+		this.canvas.freq.setSignals(this.freq.real, this.freq.imag)
+		// this.updateView()
 	},
 	onDraw: function(signalType, x0,y0,x1,y1) {
 		 // normalized to array index
 		x0 = Math.round(x0*(this.n-1))
 		x1 = Math.round(x1*(this.n-1))
-		y0 = (2*y0)-1
-		y1 = (2*y1)-1
+		y0 = this.scale[signalType](y0)
+		y1 = this.scale[signalType](y1)
 		if (x1-x0 === 0) {
 			this[signalType][this.select].set(x1, y1 )
 		} else {
@@ -306,52 +344,36 @@ ComplexDFTCanvas.prototype = {
 		this.updateView()
 	},
 	updateView: function() {
-		this.timeCanvas.doUpdate()
-		this.freqCanvas.doUpdate()
-	},
-	setOptions: function(options) {
-		if (options.length) {
-			this.setLength(options.length)
-		}
-		if (options.drawType) {
-			this.select = options.drawType
-		}
-	},
-	addControllers: function(newN, real, imag, clear, holdSample) {
-		$(newN).on('change', function(e){this.setLength(e.target.valueAsNumber)}.bind(this))
-		$(real).on('change', this.setOptions.bind(this, { drawType: 'real' }))
-		$(imag).on('change', this.setOptions.bind(this, { drawType: 'imag' }))
-		$(clear).on('click', function(){this.setLength(this.n)}.bind(this))
-		$(holdSample).on('click', function(e){
-			this.timeDraw.holdX = e.target.checked
-			this.freqDraw.holdX = e.target.checked
-		}.bind(this))
+		this.canvas.time.doUpdate()
+		this.canvas.freq.doUpdate()
 	}
 }
 
-window.onload = function main() {
-	var complex = new ComplexDFTCanvas($('.complex .time'),$('.complex .freq'), 128)
-	var slider = $('.complexControl .sliderN')
+function initSlider(slider, rangeDisplay) {
 	slider.step = 4
 	slider.min = 4
 	slider.max = 256
 	slider.value = 128
 	function onSlide(e){
 		var value = e ? e.target.value : slider.value
-		$('.complexControl .rangeDisplay').textContent = "n: " + value
+		rangeDisplay.textContent = "n: " + value
 	}
 	onSlide()
 	$(slider).on('input', onSlide)
-	complex.addControllers( slider,
-		$('.complexControl .radioReal'),
-		$('.complexControl .radioImag'),
-		$('.complexControl .buttonClear'),
-		$('.complexControl .checkHold')
-	)
-	// var c = canvas.getContext('2d')
+}
 
-	// window.onresize = function() {
-	// 	canvas.width = canvas.clientWidth
-	// 	canvas.height = canvas.clientHeight
-	// }
+window.onload = function main() {
+	initSlider($('.complexControl .sliderN'), $('.complexControl .rangeDisplay'))
+	var complex = new ComplexDFTCanvas({
+		time: $('.complex .time'),
+		freq: $('.complex .freq'),
+		radios: [
+			$('.complexControl .radioReal'),
+			$('.complexControl .radioImag')
+		],
+		clear: $('.complexControl .buttonClear'),
+		holdSample: $('.complexControl .checkHold'),
+		slider: $('.complexControl .sliderN')
+	})
+	complex.setLength(128)
 }
