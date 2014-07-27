@@ -48,10 +48,10 @@
 	.buttons {
 		display: inline-block;
 	}
-	label.real {
+	label.red {
 		color: red;
 	}
-	label.imag {
+	label.blue {
 		color: blue;
 	}
 	canvas {
@@ -105,9 +105,9 @@
 			<input type="range" class="sliderN" />
 			<div class="buttons">
 				<input type="radio" name="complex" value="real" checked="true" />
-				<label class="real">Real</label>
+				<label class="red">Real</label>
 				<input type="radio" name="complex" value="imag" />
-				<label class="imag">Imaginary</label>
+				<label class="blue">Imaginary</label>
 				<input type="checkbox" class="checkHold"/>
 				<label>Hold sample</label>
 				<input type="button" class="buttonClear" value="Clear"/>
@@ -125,6 +125,19 @@
 			<h3>Frequency (half spectrum)</h3>
 			<canvas class="freq"></canvas>
 		</div>
+		<form>
+			<div class="rangeDisplay"></div>
+			<input type="range" class="sliderN" />
+			<div class="buttons">
+				<input type="radio" name="complex" value="mag" checked="true" />
+				<label class="red">Magnitude</label>
+				<input type="radio" name="complex" value="phz" />
+				<label class="blue">Phase</label>
+				<input type="checkbox" class="checkHold"/>
+				<label>Hold sample</label>
+				<input type="button" class="buttonClear" value="Clear"/>
+			</div>
+		</form>
 	</div>
 	<hr/>
 	<div class="section two-d">
