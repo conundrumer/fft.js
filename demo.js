@@ -120,11 +120,12 @@ DrawingCanvas.prototype = {
 }
 
 // canvas for displaying a pair of 1d signals
-function Canvas1DPair (canvas) {
+function Canvas1DPair (canvas, scale) {
 	this.ctx = canvas.getContext('2d')
 	this.updated = true
 	this.signal1 = null
 	this.signal2 = null
+	this.scale = scale || 1
 }
 Canvas1DPair.prototype = {
 	setSignals: function(signal1, signal2) {
@@ -146,62 +147,48 @@ Canvas1DPair.prototype = {
 		ctx.lineJoin = "round";
 		ctx.lineWidth = 1.5;
 		if (this.signal1.length > 64) {
-			if (this.signal2) {
-				this.drawLine(this.signal2, 'blue')
-				this.drawLine(this.signal1, 'red')
-			} else {
-				this.drawLine(this.signal1, 'black')
-			}
+			this.drawLine(this.signal2, 'blue')
+			this.drawLine(this.signal1, 'red')
 		} else {
 			ctx.strokeStyle = 'black'
 			ctx.beginPath()
 			ctx.moveTo(0, ctx.canvas.height/2)
 			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2)
 			ctx.stroke()
-			if (this.signal2) {
-				this.drawStem(this.signal2, 'blue')
-				this.drawStem(this.signal1, 'red')
-			} else {
-				this.drawStem(this.signal1, 'black')
-			}
+			this.drawStem(this.signal2, 'blue')
+			this.drawStem(this.signal1, 'red')
+		}
+	},
+	plotPoint: function(signal, plotfn) {
+		for (var i = 0; i < signal.length; i++) {
+			var x = this.ctx.canvas.width * i / (signal.length - 1)
+			var y = this.ctx.canvas.height * (signal.get(i)*this.scale+1)/2
+			plotfn(x, y)
 		}
 	},
 	drawStem: function(signal, color) {
-		var ctx = this.ctx,
-			width = ctx.canvas.width,
-			height = ctx.canvas.height,
-			len = signal.length,
-			radius = Math.min(20, width / len / 2 - 1)
+		if (!signal) return;
+		var ctx = this.ctx
+			radius = Math.min(20, ctx.canvas.width / signal.length / 2 - 1)
 		ctx.strokeStyle = color;
-		for (var i = 0; i < len; i++) {
-			var x = width * i / (len - 1)
-			var y = height * (signal.get(i)+1)/2
+		this.plotPoint(signal, function(x,y){
 			ctx.beginPath()
-			ctx.moveTo(x, height/2)
+			ctx.moveTo(x, ctx.canvas.height/2)
 			ctx.lineTo(x, y)
 			ctx.stroke()
 			ctx.beginPath()
 			ctx.arc(x, y, radius, 0, 2*Math.PI)
 			ctx.stroke()
-		}
+		}.bind(this))
 	},
 	drawLine: function(signal, color) {
-		var ctx = this.ctx,
-			width = ctx.canvas.width
-			height = ctx.canvas.height
-			len = signal.length
+		if (!signal) return;
+		var ctx = this.ctx
 		ctx.beginPath()
 		ctx.strokeStyle = color;
-		for (var i = 0; i < len; i++) {
-			var x = width * i / (len - 1)
-			var y = height * (signal.get(i)+1)/2
-			// draw the line
-			if (i === 0) {
-				ctx.moveTo(x, y)
-			} else {
-				ctx.lineTo(x, y)
-			}
-		}
+		this.plotPoint(signal, function(x,y){
+			ctx.lineTo(x, y)
+		}.bind(this))
 		ctx.stroke()
 	}
 }
@@ -269,7 +256,7 @@ function ComplexDFTCanvas(nodes) {
 	// view
 	this.canvas = {
 		time: new Canvas1DPair(nodes.time),
-		freq: new Canvas1DPair(nodes.freq)
+		freq: new Canvas1DPair(nodes.freq, 2)
 	}
 
 	// controller
@@ -301,12 +288,15 @@ function ComplexDFTCanvas(nodes) {
 	}.bind(this))
 }
 ComplexDFTCanvas.prototype = {
-	scale: {
-		time: function(x) {
-			return 2*x - 1
-		},
-		freq: function(x) {
-			return 2*x - 1
+	round: function(x) {
+		return Math.round(x*(this.n-1))
+	},
+	scale: function(x, signalType) {
+		switch (signalType) {
+			case 'time':
+				return 2*x - 1
+			case 'freq':
+				return (2*x-1)/2
 		}
 	},
 	getTimeSignal: function(onUpdate) {
@@ -327,10 +317,10 @@ ComplexDFTCanvas.prototype = {
 	},
 	onDraw: function(signalType, x0,y0,x1,y1) {
 		 // normalized to array index
-		x0 = Math.round(x0*(this.n-1))
-		x1 = Math.round(x1*(this.n-1))
-		y0 = this.scale[signalType](y0)
-		y1 = this.scale[signalType](y1)
+		x0 = this.round(x0, signalType)
+		x1 = this.round(x1, signalType)
+		y0 = this.scale(y0, signalType)
+		y1 = this.scale(y1, signalType)
 		if (x1-x0 === 0) {
 			this[signalType][this.select].set(x1, y1 )
 		} else {
@@ -348,6 +338,10 @@ ComplexDFTCanvas.prototype = {
 		this.canvas.freq.doUpdate()
 	}
 }
+function RealDFTCanvas(nodes) {
+	ComplexDFTCanvas.apply(this, nodes)
+	this.signals = new TwoWayFFT(FFT.real, FFT.inverse.real)
+}
 
 function initSlider(slider, rangeDisplay) {
 	slider.step = 4
@@ -363,17 +357,18 @@ function initSlider(slider, rangeDisplay) {
 }
 
 window.onload = function main() {
-	initSlider($('.complexControl .sliderN'), $('.complexControl .rangeDisplay'))
+	initSlider($('.complex form .sliderN'), $('.complex form .rangeDisplay'))
 	var complex = new ComplexDFTCanvas({
 		time: $('.complex .time'),
 		freq: $('.complex .freq'),
 		radios: [
-			$('.complexControl .radioReal'),
-			$('.complexControl .radioImag')
+			$('.complex form [value="real"]'),
+			$('.complex form [value="imag"]')
 		],
-		clear: $('.complexControl .buttonClear'),
-		holdSample: $('.complexControl .checkHold'),
-		slider: $('.complexControl .sliderN')
+		clear: $('.complex form .buttonClear'),
+		holdSample: $('.complex form .checkHold'),
+		slider: $('.complex form .sliderN')
 	})
 	complex.setLength(128)
+
 }
