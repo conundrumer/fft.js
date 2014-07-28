@@ -234,66 +234,84 @@ ComplexSignal.create = function(array, onUpdate, scale) {
 		imag: new ComplexSignal(array, onUpdate, scale, true)
 	}
 }
-var UPPER_BOUND = -3 // db
-var LOWER_BOUND = -50 //db
-var THRESHOLD = 0.5
-// keep magnitude and phase in a separate array to preseve phase info when stuff gets zero'd
-function ComplexMagPhz (array, onUpdate) {
-	this.array = array
-	this.length = array.length/2
-	this.onUpdate = onUpdate
-	this.magphz = new Float64Array(array.length)
-	this.mag = {
-		length: this.length,
-		get: function(i) {
-			var mag = this.magphz[2*i];
-			if (mag === Number.NEGATIVE_INFINITY) return 1
-			var mNormalized = (mag - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
-			return Math.min(1-2*mNormalized, 1)
-		}.bind(this),
-		set: function(i, x) {
-			x = (1-x) * (UPPER_BOUND - LOWER_BOUND) + LOWER_BOUND
-			if (x <= LOWER_BOUND + THRESHOLD) {
-				var diff = (x - LOWER_BOUND)
-				x -= THRESHOLD / diff - 1
-			}
-			var mag = Math.pow(10, x/20),
-				phz = this.magphz[2*i+1]
-			this.array[2*i] = mag * Math.cos(phz)
-			this.array[2*i+1] = mag * Math.sin(phz)
-			this.magphz[2*i] = x
-			this.onUpdate()
-		}.bind(this)
-	}
-	this.phz = {
-		length: this.length,
-		get: function(i) {
-			return -this.magphz[2*i+1] / Math.PI
-		}.bind(this),
-		set: function(i, x) {
-			x = -2*(x-0.5) * Math.PI
-			var re = this.array[2*i],
-				im = this.array[2*i + 1],
-				mag = Math.pow(10, this.magphz[2*i]/20)
-			this.array[2*i] = mag*Math.cos(x)
-			this.array[2*i+1] = mag*Math.sin(x)
-			this.magphz[2*i+1] = x
-			this.onUpdate()
-		}.bind(this)
-	}
-	this.update()
+// in dB
+var UPPER_BOUND = -3
+var LOWER_BOUND = -50 // cutoff
+// var MAG_FLOOR = Math.pow(10, LOWER_BOUND/20)
+var MAG_FLOOR_SQ = Math.pow(10, LOWER_BOUND/10) // linear
+console.log(MAG_FLOOR_SQ)
+function ComplexMag(array, onUpdate) {
+	ComplexSignal.call(this, array, onUpdate)
 }
-// update magphz from array
-ComplexMagPhz.prototype.update = function() {
-	for (var i = 0; i < this.length; i++) {
+ComplexMag.prototype = {
+	getLinear: function (i) {
 		var re = this.array[2*i],
-			im = this.array[2*i+1]
-		this.magphz[2*i] = 10*Math.log(re*re+im*im)/Math.LN10
-		if (this.magphz[2*i] < -120) {
-			this.magphz[2*i+1] = 0 // 0 magnitude -> 0 phase
-		} else {
-			this.magphz[2*i+1] = Math.atan2(im, re)
+			im = this.array[2*i + 1]
+		return re*re+im*im
+	},
+	getBounded: function(i) {
+		var re = this.array[2*i],
+			im = this.array[2*i + 1]
+		return 10*Math.log(re*re+im*im + MAG_FLOOR_SQ)/Math.LN10
+	},
+	get: function(i) {
+		// if (denorm === Number.NEGATIVE_INFINITY) return 1
+		// if (denorm <= LOWER_BOUND + MAG_FLOOR_THRESHOLD) {
+		// 	x - MAG_FLOOR_THRESHOLD / (x - LOWER_BOUND) - 1 = denorm
+		// }
+		var normMag = (this.getBounded(i) - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
+		return Math.min(1-2*normMag, 1)
+	},
+	set: function(i, x) { // in proportion to prev magnitude, don't change phase
+		x = (1-x) * (UPPER_BOUND - LOWER_BOUND) + LOWER_BOUND
+		if (x === LOWER_BOUND) {
+			this.array[2*i] = 0
+			this.array[2*i+1] = 0
+			this.onUpdate()
+			return;
 		}
+		// if (x <= LOWER_BOUND + MAG_FLOOR_THRESHOLD) {
+		// 	x -= MAG_FLOOR_THRESHOLD / (x - LOWER_BOUND) - 1
+		// }
+		var linMag = this.getLinear(i)
+		if (linMag <= Number.EPSILON) {
+			this.array[2*i] = Math.sqrt(Math.pow(10, x/10) - MAG_FLOOR_SQ)
+		} else {
+			// x = 20*Math.log(linX)/Math.LN10
+			// var r = Math.pow(10, (x - this.getDenormalized(i))/20)
+			var r2 = (Math.pow(10, x/10) - MAG_FLOOR_SQ) / linMag
+			var r = Math.sqrt(r2)
+			this.array[2*i] *= r
+			this.array[2*i+1] *= r
+			// console.log(r2, this.array[2*i], this.array[2*i+1])
+		}
+		this.onUpdate()
+	}
+}
+function ComplexPhz(array, onUpdate) {
+	ComplexSignal.call(this, array, onUpdate)
+}
+ComplexPhz.prototype = {
+	get: function(i) {
+		var re = this.array[2*i],
+			im = this.array[2*i + 1],
+			mag2 = re*re+im*im
+		return -Math.atan2(im, re) / Math.PI
+	},
+	set: function(i, x) { // in proportion to prev magnitude,don't change magnitude
+		x = -(2*x-1) * Math.PI
+		var re = this.array[2*i],
+			im = this.array[2*i + 1],
+			mag = Math.sqrt(re*re+im*im)
+		this.array[2*i] = mag*Math.cos(x)
+		this.array[2*i+1] = mag*Math.sin(x)
+		this.onUpdate()
+	}
+}
+ComplexSignal.createMagPhz = function(array, onUpdate) {
+	return {
+		mag: new ComplexMag(array, onUpdate),
+		phz: new ComplexPhz(array, onUpdate),
 	}
 }
 function RealSignal (array, onUpdate) {
@@ -430,12 +448,11 @@ ComplexDFTCanvas.prototype = {
 			this[signalType][this.select].set(x1, y1 )
 		} else {
 			var m = (y1 - y0) / (x1 - x0)
-			for (var x = 0; x <= Math.abs(x1-x0); x++) {
-				var y = y0 + m*x
-				this[signalType][this.select].set(x+Math.min(x0,x1), y)
+			for (var x = x0; x != x1; x += (x0 < x1 ? 1 : -1)) {
+				var y = y0 + m*(x - x0)
+				this[signalType][this.select].set(x, y)
 			}
 		}
-		// console.log("setting", signalType, this.select, x, (2*y)-1 )
 		this.updateView()
 	},
 	updateView: function() {
@@ -474,14 +491,14 @@ extend(RealDFTCanvas.prototype, {
 	makeTimeSignal: function(onUpdate) {
 		this.time = RealSignal.create(this.signals.time, function(){
 			onUpdate() // update freq real/imag array
-			this.freq.update() // update freq mag/phz array
+			// this.freq.update() // update freq mag/phz array
 		}.bind(this))
 		this.canvas.time.setSignals(this.time.real)
 		this.time.mag = this.time.real
 		this.time.phz = this.time.real
 	},
 	makeFreqSignal: function(onUpdate) {
-		this.freq = new ComplexMagPhz(this.signals.freq, onUpdate)
+		this.freq = new ComplexSignal.createMagPhz(this.signals.freq, onUpdate)
 		this.canvas.freq.setSignals(this.freq.mag, this.freq.phz)
 	}
 })
