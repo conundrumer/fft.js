@@ -234,67 +234,10 @@ ComplexSignal.create = function(array, onUpdate, scale) {
 		imag: new ComplexSignal(array, onUpdate, scale, true)
 	}
 }
-var UPPER_BOUND = 0 // db
-var LOWER_BOUND = -30 //db
-function ComplexMag(array, onUpdate) {
-	ComplexSignal.call(this, array, onUpdate)
-}
-ComplexMag.prototype = {
-	getDenormalized: function (i) {
-		var re = this.array[2*i],
-			im = this.array[2*i + 1]
-		// console.log("getdenorm",i, re, im)
-		return 10*Math.log(re*re+im*im)/Math.LN10
-	},
-	get: function(i) {
-		var denorm = this.getDenormalized(i);
-		console.log("denorm", denorm)
-		if (denorm === Number.NEGATIVE_INFINITY) return 1
-		var m = (denorm - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
-		console.log("m", m)
-		return Math.min(-m, 1)
-	},
-	set: function(i, x) { // in proportion to prev magnitude, don't change phase
-		console.log("x before", x)
-		x = (1-x) * (UPPER_BOUND - LOWER_BOUND) + LOWER_BOUND
-		console.log("x after", x)
-		var r = Math.pow(10, (x - this.getDenormalized(i))/20)
-		console.log("r", r)
-		this.array[2*i] *= r
-		this.array[2*i+1] *= r
-		this.onUpdate()
-	}
-}
-function ComplexPhz(array, onUpdate) {
-	ComplexSignal.call(this, array, onUpdate)
-}
-ComplexPhz.prototype = {
-	get: function(i) {
-		var re = this.array[2*i],
-			im = this.array[2*i + 1]
-		// console.log("phz get", i, re, im, Math.atan2(im, re) / Math.PI)
-		return -Math.atan2(im, re) / Math.PI
-	},
-	set: function(i, x) { // in proportion to prev magnitude,don't change magnitude
-		x = -(2*x-1) * Math.PI
-		var re = this.array[2*i],
-			im = this.array[2*i + 1],
-			mag = Math.sqrt(re*re+im*im)
-		this.array[2*i] = mag*Math.cos(x)
-		this.array[2*i+1] = mag*Math.sin(x)
-		console.log("set mag, i:", i, ", x: ", x)
-		console.log("re: ", re, "im:", i)
-		console.log("mag: ", mag)
-		console.log("reOut: ", this.array[2*i], "imOut:", this.array[2*i+1])
-		this.onUpdate()
-	}
-}
-ComplexSignal.createMagPhz = function(array, onUpdate) {
-	return {
-		mag: new ComplexMag(array, onUpdate),
-		phz: new ComplexPhz(array, onUpdate),
-	}
-}
+var UPPER_BOUND = -3 // db
+var LOWER_BOUND = -50 //db
+var THRESHOLD = 0.5
+// keep magnitude and phase in a separate array to preseve phase info when stuff gets zero'd
 function ComplexMagPhz (array, onUpdate) {
 	this.array = array
 	this.length = array.length/2
@@ -304,24 +247,20 @@ function ComplexMagPhz (array, onUpdate) {
 		length: this.length,
 		get: function(i) {
 			var mag = this.magphz[2*i];
-			// console.log("mag", mag)
 			if (mag === Number.NEGATIVE_INFINITY) return 1
 			var mNormalized = (mag - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)
-			// console.log("mNormalized", mNormalized)
 			return Math.min(1-2*mNormalized, 1)
 		}.bind(this),
 		set: function(i, x) {
-			// console.log("x before", x)
 			x = (1-x) * (UPPER_BOUND - LOWER_BOUND) + LOWER_BOUND
-			// console.log("x after", x)
+			if (x <= LOWER_BOUND + THRESHOLD) {
+				var diff = (x - LOWER_BOUND)
+				x -= THRESHOLD / diff - 1
+			}
 			var mag = Math.pow(10, x/20),
 				phz = this.magphz[2*i+1]
-			// console.log("mag", mag)
-			// console.log("phz", phz)
 			this.array[2*i] = mag * Math.cos(phz)
 			this.array[2*i+1] = mag * Math.sin(phz)
-			// console.log("re", this.array[2*i])
-			// console.log("im", this.array[2*i+1])
 			this.magphz[2*i] = x
 			this.onUpdate()
 		}.bind(this)
@@ -350,7 +289,11 @@ ComplexMagPhz.prototype.update = function() {
 		var re = this.array[2*i],
 			im = this.array[2*i+1]
 		this.magphz[2*i] = 10*Math.log(re*re+im*im)/Math.LN10
-		this.magphz[2*i+1] = Math.atan2(im, re)
+		if (this.magphz[2*i] < -120) {
+			this.magphz[2*i+1] = 0 // 0 magnitude -> 0 phase
+		} else {
+			this.magphz[2*i+1] = Math.atan2(im, re)
+		}
 	}
 }
 function RealSignal (array, onUpdate) {
@@ -405,12 +348,7 @@ TwoWayFFT.prototype = {
 		// this.onUpdateFreq()
 	},
 	updateFreq: function() {
-		console.log("Update freq")
-		console.log("timebefore", this.time)
-		console.log("freqbefore", this.freq)
 		this.ifft.simple(this.time, this.freq)
-		console.log("timeafter", this.time)
-		console.log("freqafter", this.freq)
 		// this.onUpdateTime()
 	}
 }
