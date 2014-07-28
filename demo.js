@@ -153,7 +153,7 @@ Canvas1DPair.prototype = {
 		ctx.lineJoin = "round"
 		ctx.lineWidth = lineWidth
 		if (this.signals[0].length > 64) {
-			this.drawLine(this.signals[1], 'blue')
+			this.drawLine(this.signals[1], 'blue', this.magphz)
 			ctx.lineWidth = this.magphz ? 1.5*lineWidth : lineWidth
 			this.drawLine(this.signals[0], 'red')
 		} else {
@@ -171,10 +171,16 @@ Canvas1DPair.prototype = {
 		}
 	},
 	plotPoint: function(signal, plotfn) {
+		var x_ = null, y_ = null
 		for (var i = 0; i < signal.length; i++) {
 			var x = (this.ctx.canvas.width-1) * i / (signal.length - 1) + 0.5
 			var y = this.ctx.canvas.height * (signal.get(i)+1)/2
-			plotfn(x, y)
+			if (y_ && y === 0 && y_ > this.ctx.canvas.height/2) {
+				y = this.ctx.canvas.height
+			}
+			plotfn(x, y, x_, y_)
+			x_ = x
+			y_ = y
 		}
 	},
 	drawStem: function(signal, color, circlesOnly) {
@@ -194,14 +200,27 @@ Canvas1DPair.prototype = {
 			ctx.stroke()
 		}.bind(this))
 	},
-	drawLine: function(signal, color) {
+	drawLine: function(signal, color, doBreak) {
 		if (!signal) return;
 		var ctx = this.ctx
 		ctx.beginPath()
 		ctx.strokeStyle = color;
-		this.plotPoint(signal, function(x,y){
-			ctx.lineTo(x, y)
-		}.bind(this))
+		var endPointRadious = 3
+		this.plotPoint(signal, function(x,y, x_, y_){
+			if (doBreak && y_ && Math.abs(y_ - y) >= ctx.canvas.height/2) {
+				ctx.stroke()
+				ctx.beginPath()
+				ctx.arc(x_, y_, endPointRadious, 0, 2*Math.PI)
+				ctx.stroke()
+				ctx.beginPath()
+				ctx.arc(x, y, endPointRadious, 0, 2*Math.PI)
+				ctx.stroke()
+				ctx.beginPath()
+				ctx.moveTo(x, y)
+			} else {
+				ctx.lineTo(x, y)
+			}
+		}.bind(this), true)
 		ctx.stroke()
 	},
 	drawStemPlot: function(signal, color) {
