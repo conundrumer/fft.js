@@ -329,6 +329,7 @@
 		this.state = (new complex(n/2, inverse)).state
 
 		this.state.twiddleReal = new Float64Array(n)
+		this.state.scratch = new Float64Array(n+2)
 
 		var t = this.state.twiddleReal, theta = 2 * Math.PI / n
 
@@ -351,18 +352,24 @@
 		this.process(output, 0, 1, input, 0, 1, true)
 	}
 	real.prototype.process = function(output, outputOffset, outputStride, input, inputOffset, inputStride, packed) {
-		if (this.state.inverse) realbifftstage(input, outputOffset, outputStride, this.state, packed)
-		if (input == output) {
-			work(this.state.scratch, 0, 1, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
+		if (this.state.inverse || input == output) {
 
-			for (var i = 0; i < this.state.n; i++) {
-				<%= cload('x0', 'this.state.scratch', 'i') %>
-
-				<%= cstore('x0', 'output', 'outputOffset', 'i', 'outputStride') %>
+			for (var i = 0; i < this.state.n + (packed ? 0 : 1); i++) {
+				<%= cload('x0', 'input', 'inputOffset', 'i', 'inputStride') %>
+				<%= cstore('x0', 'this.state.scratch', 'i') %>
 			}
-		} else {
-			work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
+
+			if (this.state.inverse) {
+				realbifftstage(this.state.scratch, 0, 1, this.state, packed)
+			}
+
+			input = this.state.scratch
+			inputOffset = 0
+			inputStride = 1
 		}
+
+		work(output, outputOffset, outputStride, input, inputOffset, 1, inputStride, this.state.factors.slice(), this.state)
+
 		if (!this.state.inverse) realbifftstage(output, outputOffset, outputStride, this.state, packed)
 	}
 
