@@ -153,7 +153,7 @@ Canvas1DPair.prototype = {
 		ctx.lineJoin = "round"
 		ctx.lineWidth = lineWidth
 		if (this.signals[0].length > 64) {
-			this.drawLine(this.signals[1], 'blue', this.magphz)
+			this.drawLine(this.signals[1], 'blue', this.magphz, true)
 			ctx.lineWidth = this.magphz ? 1.5*lineWidth : lineWidth
 			this.drawLine(this.signals[0], 'red')
 		} else {
@@ -162,7 +162,7 @@ Canvas1DPair.prototype = {
 			ctx.moveTo(0, ctx.canvas.height/2)
 			ctx.lineTo(ctx.canvas.width, ctx.canvas.height/2)
 			ctx.stroke()
-			this.drawStem(this.signals[1], 'blue')
+			this.drawStem(this.signals[1], 'blue', false, this.magphz)
 			if (!this.magphz){
 				this.drawStem(this.signals[0], 'red')
 			} else {
@@ -170,12 +170,12 @@ Canvas1DPair.prototype = {
 			}
 		}
 	},
-	plotPoint: function(signal, plotfn) {
+	plotPoint: function(signal, plotfn, doWrap) {
 		var x_ = null, y_ = null
 		for (var i = 0; i < signal.length; i++) {
 			var x = (this.ctx.canvas.width-1) * i / (signal.length - 1) + 0.5
 			var y = this.ctx.canvas.height * (signal.get(i)+1)/2
-			if (y_ && y === 0 && y_ > this.ctx.canvas.height/2) {
+			if (doWrap && y_ && y === 0 && y_ > this.ctx.canvas.height/2) {
 				y = this.ctx.canvas.height
 			}
 			plotfn(x, y, x_, y_)
@@ -183,7 +183,7 @@ Canvas1DPair.prototype = {
 			y_ = y
 		}
 	},
-	drawStem: function(signal, color, circlesOnly) {
+	drawStem: function(signal, color, circlesOnly, doWrap) {
 		if (!signal) return;
 		var ctx = this.ctx
 			radius = Math.min(15, ctx.canvas.width / signal.length / 2 - 1)
@@ -198,7 +198,7 @@ Canvas1DPair.prototype = {
 			ctx.beginPath()
 			ctx.arc(x, y, radius, 0, 2*Math.PI)
 			ctx.stroke()
-		}.bind(this))
+		}.bind(this), doWrap)
 	},
 	drawLine: function(signal, color, doBreak) {
 		if (!signal) return;
@@ -220,7 +220,7 @@ Canvas1DPair.prototype = {
 			} else {
 				ctx.lineTo(x, y)
 			}
-		}.bind(this), true)
+		}.bind(this))
 		ctx.stroke()
 	},
 	drawStemPlot: function(signal, color) {
